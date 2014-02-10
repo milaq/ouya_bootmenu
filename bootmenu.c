@@ -31,14 +31,14 @@
 #define MOUNT_PATH	"/dev/block/platform/sdhci-tegra.3/by-name"
 
 
-void alarm_handler(int sig) { fprintf(stderr, "watchdog expired\n"); exit(1); }
+void alarm_handler(int sig) { fprintf(stderr, "watchdog expired, booting fallback\n"); exit(1); }
 
 int main(int argc, char *argv[])
 {
 	int				ret;
 	int				x, y;
 	int				xres, yres;
-	int				countdown = 10/*sec*/ * 10;
+	int				countdown = 5/*sec*/ * 10;
 	int				menu_sel = 1, menu_old = -1;
 	int				fb_fd, ev_fd[3];
 	unsigned char			*fontmap, *fontmap_, *runptr, runchar;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	char				*fb_map_buf;
 	static char			fb_tmp1_buf[BPP * 3840 * 2160],
 					fb_tmp2_buf[BPP * 3840 * 2160];
-	char				*img1_pname = "", *img2_pname = "";
+	char				*img_pname = "";
 
 	fprintf(stderr, "bootmenu startup\n");
 	signal(SIGALRM, alarm_handler);		/* watchdog */
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	** Open framebuffer, get settings, and set up background image.
+	** Open framebuffer and get settings.
 	*/
 	memset(&fb_vi, 0, sizeof(fb_vi));
 	memset(&fb_fi, 0, sizeof(fb_fi));
@@ -89,18 +89,6 @@ int main(int argc, char *argv[])
 	if (fb_fi.smem_len >= 1)
 		fb_map_buf = mmap(NULL, fb_fi.smem_len,
 				  PROT_READ|PROT_WRITE, MAP_SHARED, fb_fd, 0);
-
-	for (x = 0;  x < xres;  x++)
-	for (y = 0;  y < yres;  y++)  {
-		fb_tmp1_buf[BPP * (y * xres + x) +0/*red*/] =
-			y *  85 / yres;
-		fb_tmp1_buf[BPP * (y * xres + x) +1/*grn*/] =
-			((xres - x) *  34 / xres) +
-			((yres - y) *  29 / yres);
-		fb_tmp1_buf[BPP * (y * xres + x) +2/*blu*/] =
-			x * 100 / xres;
-		fb_tmp1_buf[BPP * (y * xres + x) +3       ] = 0;
-		}
 
 	/*
 	** Attempt filesystem mounts.  We use fork()/exec() so that we keep
@@ -132,7 +120,7 @@ int main(int argc, char *argv[])
 			    (in_ev.code  == KEY_POWER) &&
 			    (in_ev.value == 1/*press*/))  {
 				menu_sel++;
-				countdown = 5/*sec*/ * 10;
+				countdown = 2/*sec*/ * 10;
 			}
 		}
 
@@ -146,34 +134,34 @@ int main(int argc, char *argv[])
 			memcpy(fb_tmp2_buf, fb_tmp1_buf, FB_SIZE);
 
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				 2, -1/*centered*/, FALSE,
+				 6, xres / 200, FALSE,
 				"Ouya Boot Menu");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				 5, 1, FALSE,
-				"Tap the power button to select"
-				" your desired image.");
+				 7, xres / 200, FALSE,
+				"--------------");
+
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				 6, 1, FALSE,
-				"The boot file is checked in"
-				" /sdcard then in /system.");
+				 9, xres / 200, (menu_sel==1),
+				"Normal Boot");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				 7, 1, FALSE,
-				"Your selected image will start momentarily.");
+				 10, xres / 200, (menu_sel==2),
+				"Alternate Boot");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				10, xres / 160, (menu_sel==1),
-				"Main Image        (kernel.img)");
+				 11, xres / 200, (menu_sel==3),
+				"Recovery");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				11, xres / 160, (menu_sel==2),
-				"Alternate #1      (kernelA1.img)");
+				 13, xres / 200, (menu_sel==4),
+				"Bootloader");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				12, xres / 160, (menu_sel==3),
-				"Alternate #2      (kernelA2.img)");
+				 14, xres / 200, (menu_sel==5),
+				"Failsafe");
+
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				13, xres / 160, (menu_sel==4),
-				"ClockworkMod Recovery - built-in");
+				 19, xres / 200, FALSE,
+				"POWER moves to next item");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
-				14, xres / 160, (menu_sel==5),
-				"Ouya Recovery Partition");
+				 20, xres / 200, FALSE,
+				"Wait two seconds to select");
 
 			if (fb_fi.smem_len >= 1)
 				memcpy(fb_map_buf, fb_tmp2_buf, FB_SIZE);
@@ -189,22 +177,13 @@ int main(int argc, char *argv[])
 	*/
 	switch (menu_sel)  {
 		case 1:
-			img1_pname = "/tmp/m_data/media/kernel.img";
-			img2_pname = "/tmp/m_system/kernel.img";
+			img_pname = "/tmp/m_system/boot.img";
 			break;
 		case 2:
-			img1_pname = "/tmp/m_data/media/kernelA1.img";
-			img2_pname = "/tmp/m_system/kernelA1.img";
+			img_pname = "/tmp/m_data/media/altboot.img";
 			break;
 		case 3:
-			img1_pname = "/tmp/m_data/media/kernelA2.img";
-			img2_pname = "/tmp/m_system/kernelA2.img";
-			break;
-		case 4:
-			fprintf(stderr, "normal exit (to CWM)\n");
-			break;
-		case 5:
-			fprintf(stderr, "attempt reboot recovery\n");
+			fprintf(stderr, "reboot recovery\n");
 			sync();
 			if (fork() == 0)  {
 				char *arg[] = {"/sbin/sh", "-c",
@@ -215,11 +194,26 @@ int main(int argc, char *argv[])
 
 			sleep(2);
 			break;
+		case 4:
+			fprintf(stderr, "reboot bootloader\n");
+			sync();
+			if (fork() == 0)  {
+				char *arg[] = {"/sbin/sh", "-c",
+					"reboot bootloader", NULL};
+				execvp(arg[0], arg);
+				exit(0);
+			}
+
+			sleep(2);
+			break;
+		case 5:
+			fprintf(stderr, "failsafe exit (to CWM)\n");
+			break;
 	}
 
 	/* Android image / KExec management */
-	if ((strlen(img1_pname) >= 1) &&
-	    (extract_files(img1_pname) || extract_files(img2_pname)))  {
+	if ((strlen(img_pname) >= 1) &&
+	    (extract_files(img_pname)))  {
 		fprintf(stderr, "attempt kexec\n");
 		sync();
 		if (fork() == 0)  {
