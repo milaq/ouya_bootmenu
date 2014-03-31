@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	char				*fb_map_buf;
 	static char			fb_tmp1_buf[BPP * 3840 * 2160],
 					fb_tmp2_buf[BPP * 3840 * 2160];
-	char				*img_pname = "";
+	char				*img_pname = "", *img2_pname = "";
 
 	fprintf(stderr, "bootmenu startup\n");
 	signal(SIGALRM, alarm_handler);		/* watchdog */
@@ -181,6 +181,7 @@ int main(int argc, char *argv[])
 			break;
 		case 2:
 			img_pname = "/tmp/m_data/media/altboot.img";
+			img2_pname = "/tmp/m_data/media/0/altboot.img";
 			break;
 		case 3:
 			fprintf(stderr, "reboot recovery\n");
@@ -213,7 +214,7 @@ int main(int argc, char *argv[])
 
 	/* Android image / KExec management */
 	if ((strlen(img_pname) >= 1) &&
-	    (extract_files(img_pname)))  {
+	    (extract_files(img_pname) || extract_files(img2_pname)))  {
 		fprintf(stderr, "attempt kexec\n");
 		sync();
 		if (fork() == 0)  {
