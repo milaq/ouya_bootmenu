@@ -135,10 +135,10 @@ int main(int argc, char *argv[])
 
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
 				 6, xres / 200, FALSE,
-				"Ouya Boot Menu");
+				"Ouya Bootmenu");
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
 				 7, xres / 200, FALSE,
-				"--------------");
+				"-------------");
 
 			write_text(fb_tmp2_buf, xres, yres, fontmap,
 				 9, xres / 200, (menu_sel==1),
