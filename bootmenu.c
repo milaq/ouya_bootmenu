@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	int				xres, yres;
 	int				countdown = 5/*sec*/ * 10;
 	int				menu_sel = 1, menu_old = -1;
-	int				fb_fd, ev_fd[3];
+	int				fb_fd, ev_fd[5];
 	unsigned char			*fontmap, *fontmap_, *runptr, runchar;
         struct input_event		in_ev;
 	struct fb_fix_screeninfo	fb_fi;
@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
 	ev_fd[0] = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
 	ev_fd[1] = open("/dev/input/event1", O_RDONLY | O_NONBLOCK);
 	ev_fd[2] = open("/dev/input/event2", O_RDONLY | O_NONBLOCK);
+	ev_fd[3] = open("/dev/input/event3", O_RDONLY | O_NONBLOCK);
+	ev_fd[4] = open("/dev/input/event4", O_RDONLY | O_NONBLOCK);
 
 	/*
 	** Uncompress font.  We end up with a byte-based multi-char bitmap.
@@ -113,7 +115,7 @@ int main(int argc, char *argv[])
 	** Watch for events over the next few seconds.  Redraw upon click.
 	*/
 	while (countdown-- >= 1)  {
-		for (x = 0;  x < 3;  x++)  {
+		for (x = 0;  x < 5;  x++)  {
 			memset(&in_ev, 0, sizeof(in_ev));
 			read(ev_fd[x], &in_ev, sizeof(in_ev));
 			if ((in_ev.type  == EV_KEY)    &&
@@ -248,7 +250,11 @@ int main(int argc, char *argv[])
 	if (fb_fi.smem_len >= 1)
 		munmap(fb_map_buf, fb_fi.smem_len);
 	close(fb_fd);
-	close(ev_fd[0]); close(ev_fd[1]); close(ev_fd[2]);
+	close(ev_fd[0]);
+	close(ev_fd[1]);
+	close(ev_fd[2]);
+	close(ev_fd[3]);
+	close(ev_fd[4]);
 	return 0;
 }
 
