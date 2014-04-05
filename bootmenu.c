@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 	int				ret;
 	int				x, y;
 	int				xres, yres;
-	int				countdown = 5/*sec*/ * 10;
+	int				countdown = 4/*sec*/ * 10;
 	int				menu_sel = 1, menu_old = -1;
 	int				fb_fd, ev_fd[5];
 	unsigned char			*fontmap, *fontmap_, *runptr, runchar;
